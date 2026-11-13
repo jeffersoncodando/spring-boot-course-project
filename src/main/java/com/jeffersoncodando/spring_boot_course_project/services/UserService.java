@@ -2,8 +2,11 @@ package com.jeffersoncodando.spring_boot_course_project.services;
 
 import com.jeffersoncodando.spring_boot_course_project.entities.User;
 import com.jeffersoncodando.spring_boot_course_project.repositories.UserRepository;
+import com.jeffersoncodando.spring_boot_course_project.services.exceptions.DatabaseException;
 import com.jeffersoncodando.spring_boot_course_project.services.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,7 +24,7 @@ public class UserService {
 
     public User findById(Long id) {
         Optional<User> obj = repository.findById(id);
-        return obj.orElseThrow(()-> new ResourceNotFoundException(id));
+        return obj.orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     public User insert(User obj) {
@@ -29,13 +32,23 @@ public class UserService {
     }
 
     public void delete(Long id) {
-        repository.deleteById(id);
+        User user = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException(id));
+
+        try {
+            repository.delete(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new DatabaseException(e.getMessage());
+        }
     }
 
     public User update(Long id, User obj) {
-        User entity = repository.getReferenceById(id);
-        updateData(entity, obj);
-        return repository.save(entity);
+        try {
+            User entity = repository.getReferenceById(id);
+            updateData(entity, obj);
+            return repository.save(entity);
+        } catch (EntityNotFoundException e){
+            throw new ResourceNotFoundException(id);
+        }
     }
 
     private void updateData(User entity, User obj) {
